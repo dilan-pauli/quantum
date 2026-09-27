@@ -17,7 +17,7 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
 
     let mut qubo = vec![vec![0.0; num_of_vars]; num_of_vars];
 
-    let index = |frag: usize, slot: usize| -> usize{frag * n + slot};
+    let index = |frag: usize, slot: usize| -> usize { frag * num_of_fragments + slot };
 
     for i in 0..num_of_fragments {
         for j in 0..num_of_fragments {
@@ -73,6 +73,49 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
                   
 }
 
+/// Render a QUBO matrix as an ANSI-colored heatmap (dark terminal assumed).
+///
+/// Color key:
+///   red   = positive coupling (penalty / repulsion)
+///   blue  = negative coupling (overlap reward / attraction)
+///   gray  = zero (no direct interaction)
+///
+/// Row/column `i` is binary variable `x_i` = fragment `i / n` placed in slot
+/// `i % n`. Diagonal entries are linear biases; off-diagonal are quadratic
+/// couplings — exactly the two terms of a QUBO, H = Σ a_i x_i + Σ b_ij x_i x_j.
+fn print_qubo(name: &str, m: &[Vec<f64>]) {
+    let max = m
+        .iter()
+        .flatten()
+        .fold(1.0_f64, |acc, &v| acc.max(v.abs()));
+
+    println!("\n{name}  ({0} x {0})", m.len());
+    for row in m {
+        for &v in row {
+            if v == 0.0 {
+                print!("\x1b[48;2;35;35;35m {:6.1} \x1b[0m", v);
+                continue;
+            }
+            let t = v / max; // in [-1, 1]
+            let (r, g, b) = if v > 0.0 {
+                // positive -> red, intensity scales with magnitude
+                (255.0, (1.0 - t) * 180.0, (1.0 - t) * 180.0)
+            } else {
+                // negative -> blue
+                ((1.0 + t) * 180.0, (1.0 + t) * 180.0, 255.0)
+            };
+            print!(
+                "\x1b[48;2;{};{};{}m {:6.1} \x1b[0m",
+                r as u8, g as u8, b as u8, v
+            );
+        }
+        println!();
+    }
+    println!(
+        "  key: \x1b[31mred = + penalty (repulsion)\x1b[0m  \x1b[34mblue = - overlap reward (attraction)\x1b[0m  gray = 0"
+    );
+}
+
 fn main() {
     let frag_a = "ATGCTT";
     let frag_b = "GCTTGA";
@@ -84,9 +127,11 @@ fn main() {
     let qubo = build_qubo_matrix(&fragmets, penalty);
     let size = qubo.len();
 
-    println!("Fragments count: {}", fragments.len());
+    println!("Fragments count: {}", fragmets.len());
     println!("Total Yes/No switches (Qubits needed): {}", size);
     println!("QUBO Matrix Dimensions: {} x {}", size, size);
+
+    print_qubo("QUBO matrix", &qubo);
     
     // Check an example:
     // Fragment 0 in Slot 0 (Index 0) and Fragment 1 in Slot 1 (Index 4)
