@@ -21,15 +21,16 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
 
     for i in 0..num_of_fragments {
         for j in 0..num_of_fragments {
-            if i == j { continue; } // Don't compute_overlap for same fragments
+            if i == j {
+                continue;
+            } // Don't compute_overlap for same fragments
 
             let overlap = compute_overlap(fragments[i], fragments[j]) as f64;
 
             // If there is some overlap
             if overlap > 0.0 {
-                
                 // Find the matrix index for the score
-                for t in 0..(num_of_fragments-1) {
+                for t in 0..(num_of_fragments - 1) {
                     let u = index(i, t);
                     let v = index(j, t + 1);
 
@@ -41,7 +42,7 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
     }
 
     // Now we have a martix of scores, (if the input vector was very large this would take forever)
-    
+
     // Analese the qudo to apply penalty, every slot t must have 1 fragment
     for t in 0..num_of_fragments {
         for i in 0..num_of_fragments {
@@ -49,28 +50,26 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
             qubo[u][u] -= penalty;
 
             for j in (i + 1)..num_of_fragments {
-                let v = index(j,t);
+                let v = index(j, t);
                 qubo[u][v] += 2.0 * penalty;
             }
         }
     }
 
     // every fragment i must appear in exactly 1 slot
-    for i in 0..num_of_fragments { 
+    for i in 0..num_of_fragments {
         for t in 0..num_of_fragments {
-            let u = index(i,t);
+            let u = index(i, t);
             qubo[u][u] -= penalty;
 
-            for s in (t + 1)..num_of_fragments{
-                let v = index(i,s);
+            for s in (t + 1)..num_of_fragments {
+                let v = index(i, s);
                 qubo[u][v] += 2.0 * penalty;
             }
         }
-
     }
 
     qubo
-                  
 }
 
 /// Render a QUBO matrix as an ANSI-colored heatmap (dark terminal assumed).
@@ -84,10 +83,7 @@ fn build_qubo_matrix(fragments: &[&str], penalty: f64) -> Vec<Vec<f64>> {
 /// `i % n`. Diagonal entries are linear biases; off-diagonal are quadratic
 /// couplings — exactly the two terms of a QUBO, H = Σ a_i x_i + Σ b_ij x_i x_j.
 fn print_qubo(name: &str, m: &[Vec<f64>]) {
-    let max = m
-        .iter()
-        .flatten()
-        .fold(1.0_f64, |acc, &v| acc.max(v.abs()));
+    let max = m.iter().flatten().fold(1.0_f64, |acc, &v| acc.max(v.abs()));
 
     println!("\n{name}  ({0} x {0})", m.len());
     for row in m {
@@ -132,7 +128,7 @@ fn main() {
     println!("QUBO Matrix Dimensions: {} x {}", size, size);
 
     print_qubo("QUBO matrix", &qubo);
-    
+
     // Check an example:
     // Fragment 0 in Slot 0 (Index 0) and Fragment 1 in Slot 1 (Index 4)
     println!("\nReward interaction between (Frag 0, Slot 0) and (Frag 1, Slot 1):");
@@ -148,7 +144,7 @@ fn main() {
     //     "Overlap B -> C: {} letters",
     //     compute_overlap(frag_b, frag_c)
     // );
-    // println!(    
+    // println!(
     //     "Overlap A -> C: {} letters",
     //     compute_overlap(frag_a, frag_c)
     // );
